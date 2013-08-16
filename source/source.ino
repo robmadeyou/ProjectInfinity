@@ -5,7 +5,7 @@
   5 = Loading
   4 = Power on;
 */
-#include <Adafruit_GPS.h>
+#include <TinyGPS.h>
 #include <SoftwareSerial.h>
 #include <dht11.h>
 #include <SD.h>
@@ -15,7 +15,7 @@ int Temp, Light, Humidity, hCheck;
 #define PowerOnPin 4
 #define LoadingPin 5
 #define ReadyPin 9
-#define NotifyPin 10
+#define NotifyPin 8
 #define GPSLockPin 6
 //Sensors
 #define tempPin 0
@@ -24,25 +24,18 @@ int Temp, Light, Humidity, hCheck;
 #define humidityPin 7
 
 dht11 DHT11;
-const int chipSelect = 8;
+const int chipSelect = 10;
 
-SoftwareSerial mySerial(3,2);
-Adafruit_GPS GPS(&mySerial);
+TinyGPS gps;
+SoftwareSerial ss(3, 2);
 
 boolean SDLoaded = true;
 
-#define GPSECHO  true
-
-// this keeps track of whether we're using the interrupt
-// off by default!
-boolean usingInterrupt = false;
-void useInterrupt(boolean);
-
 void setup(){
-   Serial.begin(115200);
+   Serial.begin(4800);
    Serial.print("Setting LED's...");
    
-   GPS.begin(9600);
+   ss.begin(4800);
    
    pinMode(PowerOnPin, OUTPUT);
    pinMode(LoadingPin, OUTPUT);
@@ -70,33 +63,11 @@ void setup(){
      digitalWrite(LoadingPin, LOW);
      digitalWrite(ReadyPin, LOW); 
    }
-   
-   // uncomment this line to turn on RMC (recommended minimum) and GGA (fix data) including altitude
-  GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
-  // uncomment this line to turn on only the "minimum recommended" data
-  //GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCONLY);
-  // For parsing data, we don't suggest using anything but either RMC only or RMC+GGA since
-  // the parser doesn't care about other sentences at this time
-
-  // Set the update rate
-  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);   // 1 Hz update rate
-  // For the parsing code to work nicely and have time to sort thru the data, and
-  // print it out we don't suggest using anything higher than 1 Hz
-
-  // Request updates on antenna status, comment out to keep quiet
-  GPS.sendCommand(PGCMD_ANTENNA);
-
-  // the nice thing about this code is you can have a timer0 interrupt go off
-  // every 1 millisecond, and read data from the GPS for you. that makes the
-  // loop code a heck of a lot easier!
-  useInterrupt(true);
-   
-   mySerial.println(PMTK_Q_RELEASE);
 }
 
 void loop(){
   sensors();
-  scanGPS();
+  gpsLoop();
 }
 
 void sensors(){
@@ -109,9 +80,9 @@ void sensors(){
   else
     Humidity = DHT11.humidity;
   
-  saveToSD("tem:" + (String)Temp);
-  saveToSD("lux:" + (String)Light); 
-  saveToSD("hum:" + (String)Humidity);
+  saveStringToSD("tem:" + (String)Temp);
+  saveStringToSD("lux:" + (String)Light); 
+  saveStringToSD("hum:" + (String)Humidity);
   delay(30);
   digitalWrite(NotifyPin, LOW);
   delay(970);
@@ -137,122 +108,45 @@ int toLux(int adc)
   else
     return 300 + 5.6 * (adc - 67);
 }
-// Interrupt is called once a millisecond, looks for any new GPS data, and stores it
-SIGNAL(TIMER0_COMPA_vect) {
-  char c = GPS.read();
-  // if you want to debug, this is a good time to do it!
-#ifdef UDR0
-  if (GPSECHO)
-    if (c) UDR0 = c;  
-  // writing direct to UDR0 is much much faster than Serial.print 
-  // but only one character can be written at a time. 
-#endif
-}
 
-void useInterrupt(boolean v) {
-  if (v) {
-    // Timer0 is already used for millis() - we'll just interrupt somewhere
-    // in the middle and call the "Compare A" function above
-    OCR0A = 0xAF;
-    TIMSK0 |= _BV(OCIE0A);
-    usingInterrupt = true;
-  } 
-  else {
-    // do not call the interrupt function COMPA anymore
-    TIMSK0 &= ~_BV(OCIE0A);
-    usingInterrupt = false;
-  }
-}
-
-
-uint32_t timer = millis();
-void scanGPS(){
-    // in case you are not using the interrupt above, you'll
-  // need to 'hand query' the GPS, not suggested :(
-  if (! usingInterrupt) {
-    // read data from the GPS in the 'main loop'
-    char c = GPS.read();
-    // if you want to debug, this is a good time to do it!
-    if (GPSECHO)
-      if (c) Serial.print(c);
-  }
-
-  // if a sentence is received, we can check the checksum, parse it...
-  if (GPS.newNMEAreceived()) {
-    // a tricky thing here is if we print the NMEA sentence, or data
-    // we end up not listening and catching other sentences! 
-    // so be very wary if using OUTPUT_ALLDATA and trytng to print out data
-    //Serial.println(GPS.lastNMEA());   // this also sets the newNMEAreceived() flag to false
-
-    if (!GPS.parse(GPS.lastNMEA()))   // this also sets the newNMEAreceived() flag to false
-      return;  // we can fail to parse a sentence in which case we should just wait for another
-  }
-
-  // if millis() or timer wraps around, we'll just reset it
-  if (timer > millis())  timer = millis();
-
-  // approximately every 2 seconds or so, print out the current stats
-  if (millis() - timer > 2000) { 
-    timer = millis(); // reset the timer
-
-    Serial.print("\nTime: ");
-    Serial.print(GPS.hour, DEC); 
-    Serial.print(':');
-    Serial.print(GPS.minute, DEC); 
-    Serial.print(':');
-    Serial.print(GPS.seconds, DEC); 
-    Serial.print('.');
-    Serial.println(GPS.milliseconds);
-    Serial.print("Date: ");
-    Serial.print(GPS.day, DEC); 
-    Serial.print('/');
-    Serial.print(GPS.month, DEC); 
-    Serial.print("/20");
-    Serial.println(GPS.year, DEC);
-    Serial.print("Fix: "); 
-    Serial.print((int)GPS.fix);
-    Serial.print(" quality: "); 
-    Serial.println((int)GPS.fixquality); 
+void saveStringToSD(String args){
+  File dataFile = SD.open("oneHour.txt", FILE_WRITE);
+  dataFile.print(args + ",");
+  Serial.println(args);
+  dataFile.close();
   
-  
-      Serial.print("Location: ");
-      Serial.print(GPS.latitude, 4); Serial.print(GPS.lat);
-      Serial.print(", "); 
-      Serial.print(GPS.longitude, 4); Serial.println(GPS.lon);
-      
-      Serial.print("Speed (knots): "); Serial.println(GPS.speed);
-      Serial.print("Angle: "); Serial.println(GPS.angle);
-      Serial.print("Altitude: "); Serial.println(GPS.altitude);
-      Serial.print("Satellites: "); Serial.println((int)GPS.satellites);
-      saveToSD("Minute: ",GPS.minute);
-      saveToSD("Altitude: ", GPS.altitude);
-      saveToSD("Latitude: ", GPS.latitude);
-      saveToSD("longitude: ", GPS.lon);
-      saveToSD("Lat: ", GPS.lat);
-      saveToSD("Lon: ", GPS.lon);
+  digitalWrite(NotifyPin, HIGH);
 }
-    if(GPS.fix){
-       digitalWrite(GPSLockPin, HIGH);
-    }else{
-       digitalWrite(GPSLockPin, LOW); 
+void gpsLoop(){
+  boolean newData = false;
+  unsigned long chars;
+  unsigned short sentences, failed;
+
+  // For one second we parse GPS data and report some key values
+  for (unsigned long start = millis(); millis() - start < 1000;)
+  {
+    while (ss.available())
+    {
+      char c = ss.read();
+      //Serial.write(c); // uncomment this line if you want to see the GPS data flowing
+      if (gps.encode(c)) // Did a new valid sentence come in?
+        newData = true;
     }
-}
-void saveToSD(String args){
-  File dataFile = SD.open("oneHour.txt", FILE_WRITE);
+  }
+
   
-    dataFile.print(args + ",");
-  
-  dataFile.close();
-  
-  digitalWrite(NotifyPin, HIGH);
-}
-void saveToSD(String pre, float args){
-  File dataFile = SD.open("oneHour.txt", FILE_WRITE);
-    dataFile.print(pre);
-    dataFile.print(args);
-    dataFile.print(",");
-  
-  dataFile.close();
-  
-  digitalWrite(NotifyPin, HIGH);
+    float flat, flon;
+    unsigned long age;
+    gps.f_get_position(&flat, &flon, &age);
+    Serial.print("LAT=");
+    Serial.print(flat == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : flat, 6);
+    Serial.print(" LON=");
+    Serial.print(flon == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : flon, 6);
+    Serial.print(" SAT=");
+    Serial.print(gps.satellites() == TinyGPS::GPS_INVALID_SATELLITES ? 0 : gps.satellites());
+    Serial.print(" PREC=");
+    Serial.print(gps.hdop() == TinyGPS::GPS_INVALID_HDOP ? 0 : gps.hdop());
+    if(newData){
+      digitalWrite(GPSLockPin, HIGH);
+    }
 }
