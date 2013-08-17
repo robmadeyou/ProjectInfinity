@@ -236,8 +236,12 @@ void scanGPS(){
        digitalWrite(GPSLockPin, LOW); 
     }
 }
+int fileNum = 0;
 void saveToSD(int args1, int args2, int args3, float args4, float args5, float args6){
-  File dataFile = SD.open("data.txt", FILE_WRITE);
+  const char fileDir = "data";
+  fileDir + fileNum;
+  fileDir + ".txt";
+  File dataFile = SD.open(fileDir, FILE_WRITE);
   dataFile.println(args1);
   dataFile.println(args2);
   dataFile.println(args3);
