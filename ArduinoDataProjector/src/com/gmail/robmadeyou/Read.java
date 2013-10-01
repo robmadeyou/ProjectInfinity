@@ -3,6 +3,7 @@ package com.gmail.robmadeyou;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * Created with IntelliJ IDEA.
@@ -23,8 +24,7 @@ public class Read {
             String currentLine;
             br = new BufferedReader(new FileReader(filedir));
             while((currentLine = br.readLine()) != null){
-                Data.totalData.add(Integer.parseInt(currentLine));
-                System.out.println(currentLine);
+                Data.totalData.add(Double.parseDouble(currentLine));
             }
 
             allRead = true;

@@ -10,15 +10,15 @@ import java.util.ArrayList;
  * To change this template use File | Settings | File Templates.
  */
 public class Data {
-    public static ArrayList<Integer> totalData = new ArrayList<Integer>();
+    public static ArrayList<Double> totalData = new ArrayList<Double>();
 
-    public static ArrayList<Integer> lightData = new ArrayList<Integer>();
-    public static ArrayList<Integer> humData = new ArrayList<Integer>();
-    public static ArrayList<Integer> tempData = new ArrayList<Integer>();
+    public static ArrayList<Double> lightData = new ArrayList<Double>();
+    public static ArrayList<Double> humData = new ArrayList<Double>();
+    public static ArrayList<Double> tempData = new ArrayList<Double>();
 
-    public static ArrayList<Integer> longData = new ArrayList<Integer>();
-    public static ArrayList<Integer> latData = new ArrayList<Integer>();
-    public static ArrayList<Integer> altData = new ArrayList<Integer>();
+    public static ArrayList<Double> longData = new ArrayList<Double>();
+    public static ArrayList<Double> latData = new ArrayList<Double>();
+    public static ArrayList<Double> altData = new ArrayList<Double>();
 
     public static void sort(){
         int times = totalData.size() / 6;
