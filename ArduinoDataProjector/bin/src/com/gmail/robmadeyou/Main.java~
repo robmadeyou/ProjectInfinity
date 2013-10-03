@@ -1,5 +1,7 @@
 package com.gmail.robmadeyou;
 
+
+
 import com.gmail.robmadeyou.Draw.Box;
 import com.gmail.robmadeyou.Effects.Color;
 import com.gmail.robmadeyou.Gui.Text;
@@ -16,7 +18,7 @@ import com.gmail.robmadeyou.World.Camera;
  */
 public class Main {
     public static void main(String args[]){
-        Screen.create(1000, 1000, "Screen", Screen.GameType.CUSTOM, false);
+        Screen.create(400, 400, "Screen", Screen.GameType.CUSTOM, false);
         
         Camera cam = Engine.addNewCamera(new Camera(0,0, 0, 0, Screen.getWidth(), Screen.getHeight()));
         Read.read("Data/DATA.TXT");
@@ -36,13 +38,6 @@ public class Main {
         	double minSpeed = 1000;
         	double total = 0;
         	int start = 2100;
-        	
-        	
-        	double minLat = 100000;
-        	double minLong = 100000;
-        	
-        	double minimumLat = 5400.74;
-        	double minimumLong = 6178.0;
         	for(int i = start; i < Data.humData.size(); i++){
         		second++;
         		if(second >= 60){
@@ -61,18 +56,12 @@ public class Main {
         		}
         		averageSpeed = Math.round(Data.altData.get(i) - Data.altData.get(i - 1));
         		if(averageSpeed != 0)
-        		
+        		System.out.println(averageSpeed);
         		if(maxSpeed < averageSpeed && averageSpeed > 0 && averageSpeed <= 1000){
         			total += averageSpeed;
         		}
         		if(minSpeed > averageSpeed && averageSpeed != 0){
         			minSpeed = averageSpeed;
-        		}
-        		if(minLat > Data.latData.get(i) && Data.latData.get(i) != 0){
-        			minLat = Data.latData.get(i);
-        		}
-        		if(minLong > Data.longData.get(i) && Data.longData.get(i) != 0){
-        			minLong = Data.longData.get(i);
         		}
     			Text.drawString("fps: ^5" + Screen.actualFps, Mouse.getTranslatedX() + 10, Mouse.getTranslatedY() + 20, 1, 1, 1, Color.White, true, false);
     			Text.drawString("Frame: ^5"+ i, 40, 5, 1, 1f, 1.0, Color.White, false, false);
@@ -102,9 +91,6 @@ public class Main {
         		Text.drawString("Max Humidity: ^5"+ maxHumidity, 40, 210, 1, 1f, 1.0, Color.White, false, false);
         		Text.drawString("Min Humidity: ^5"+ minHumidity, 40, 225, 1, 1f, 1.0, Color.White, false, false);
         		
-        		Text.drawString("Min Lat: ^5"+ (minLat - minimumLat), 40, 255, 1, 1f, 1.0, Color.White, false, false);
-        		Text.drawString("Min Long: ^5"+ (minLong - minimumLong), 40, 270, 1, 1f, 1.0, Color.White, false, false);
-        		
         		Text.drawString("Time spent in air ^5"+ hour + " ^2hours  ^5" + minute + "^2 minutes, ^5" + second + " ^2seconds", 40, 240, 1, 1f, 1.0, Color.White, false, false);
         		int multiplier = 1;
         		if(Data.altData.get(i) > 4000 && Data.altData.get(i) < 8000){
@@ -115,9 +101,6 @@ public class Main {
         			multiplier = 7;
         		}
         		Box.drawBox(40, 130, Data.altData.get(i) / (10 * multiplier), 40);
-        		Color.Red.bind();
-        		Box.drawBox((Data.latData.get(i) - minimumLat) * 40, (Data.latData.get(i) - minimumLat) * 40, 50, 50);
-        		
         		Screen.refresh();
         		if(Screen.isAskedToClose()){
         			Screen.destroy();
